@@ -1,6 +1,3 @@
 @default
 <p>{{value}}</p>
 default@
-@big
-<h2>{{value}}</h2>
-big@
