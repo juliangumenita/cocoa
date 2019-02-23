@@ -45,42 +45,35 @@
       */
     }
 
-    private static function keys($name, $parameters){
-      $temp = [];
-      foreach ($parameters as $key => $value) {
-        if(strpos($key, $name . "::") === 0){
-          $bean = substr($key, strlen($name) + 2);
-          $temp[$bean] = $value;
-        }
-      }
-      return $temp;
-    }
-
-    public static function get($name, $parameters = [], $options = "default"){
+    public static function get($name, $parameters = [], $options = "default", $beans = []){
       $options = self::options($options);
       $file = @file_get_contents($options["dir"] . $name . "." . $options["ext"]);
       /* Getting the contents. */
+
       $component = self::between($file, "@{$options["state"]}", "{$options["state"]}@");
       foreach ($parameters as $key => $param) {
         $component = str_replace("{{{$key}}}", $param, $component);
       }
-      /* Replacing all of the parameters. */
-      $component = preg_replace("/@{{[\s\S]+?}}/", null, $component);
-      /* Replacing all of the unused versions. */
+      /* Replacing all of the variables. */
 
-      $cocoas = self::between($component, "[[", "]]", true);
-      foreach ($cocoas as $cocoa) {
-        $package = explode("@", $cocoa);
+      $beans = self::between($component, "[[", "]]", true);
+      foreach ($beans as $bean) {
+        $package =
+          array_key_exists($beans[$bean])
+          ? $beans[$bean]
+          : [ "state" => "default", "parameters" => [], "beans" => []];
 
-        $cocoaName = $package[0];
-        $cocoaVersion = array_key_exists(1, $package) ? $package[1] : "default";
-        $cocoaParameters = self::keys($cocoaName, $parameters);
+        $beanParameters = array_key_exists($package["parameters"]) ? $package["parameters"] : [];
+        $beanState = array_key_exists($package["state"]) ? $package["state"] : "default";
+        $beanCococas = array_key_exists($package["beans"]) ? $package["beans"] : [];
 
-        $component = str_replace("[[{$cocoa}]]", self::get($cocoaName, $cocoaParameters, $cocoaVersion), $component);
+        $component = str_replace("[[{$cocoa}]]", self::get($bean, $beanParameters, $beanState, $beanCococas), $component);
       }
-      /* Getting the state. */
+      /* Replacing all of the "beans". */
+
       $component = preg_replace("/{{[\s\S]+?}}/", null, $component);
       /* Cleaning all unused parameters. */
+
       return $component;
     }
 
